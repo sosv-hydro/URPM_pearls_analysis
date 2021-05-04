@@ -1,0 +1,308 @@
+Sub InsertPivotTable(ws As Worksheet)
+    
+    Dim PSheet As Worksheet
+    Dim pivots As Variant
+    pivots = Array("deptStanding", "plStanding", "academicYearStanding", "avgApproval", "statusCount")
+    
+    'Set PSheet = ActiveWorkbook.Worksheets(sheet)
+    
+    Set PSheet = ws
+    
+    'ActiveWorkbook.Worksheets(sheet).Activate
+    
+    PSheet.Activate
+    
+    On Error Resume Next
+    'ActiveSheet.pivotTables("deptStanding").TableRange2.Clear
+    For Each i In pivots
+        ActiveSheet.pivotTables(i).TableRange2.Clear
+    Next i
+    
+    For Each cht In PSheet.ChartObjects
+        cht.Delete
+    Next cht
+   
+   'Declare Variables
+    
+    Dim PCache1 As PivotCache
+    Dim PTable1 As PivotTable
+    Dim PChart1 As Chart
+    Dim PShape1 As Shape
+    
+    Dim PCache2 As PivotCache
+    Dim PTable2 As PivotTable
+    Dim PChart2 As Chart
+    Dim PShape2 As Shape
+    
+    Dim PCache3 As PivotCache
+    Dim PTable3 As PivotTable
+    Dim PChart3 As Chart
+    Dim PShape3 As Shape
+    
+    Dim PCache4 As PivotCache
+    Dim PTable4 As PivotTable
+    Dim PChart4 As Chart
+    Dim PShape4 As Shape
+    
+    Dim PCache5 As PivotCache
+    Dim PTable5 As PivotTable
+    Dim PChart5 As Chart
+    Dim PShape5 As Shape
+    
+    Dim PChart6 As Chart
+    Dim PShape6 As Shape
+    
+    Dim PChart7 As Chart
+    Dim PShape7 As Shape
+    
+    Dim PRange As Range
+    Dim LastRow As Long
+    Dim LastCol As Long
+    
+    'Define Data Range
+    LastRow = PSheet.Cells(Rows.count, 1).End(xlUp).Row
+    LastCol = PSheet.Cells(1, Columns.count).End(xlToLeft).Column
+    Set PRange = PSheet.Cells(1, 1).Resize(LastRow, LastCol)
+    
+    '/**** Department Standing Pivot *****/
+    
+    'Define Pivot Cache
+    Set PCache1 = ActiveWorkbook.PivotCaches.Create _
+    (SourceType:=xlDatabase, SourceData:=PRange). _
+    CreatePivotTable(TableDestination:=PSheet.Cells(11, 18), _
+    TableName:="deptStanding")
+    
+    'Insert Blank Pivot Table
+    Set PTable1 = PCache1.CreatePivotTable _
+    (TableDestination:=PSheet.Cells(11, 18), TableName:="deptStanding")
+    
+    'Insert Row Fields
+    With ActiveSheet.pivotTables("deptStanding").PivotFields("study_program")
+    .Orientation = xlRowField
+    .Position = 1
+    End With
+    
+    'Insert Column Fields
+    With ActiveSheet.pivotTables("deptStanding").PivotFields("Standing")
+    .Orientation = xlColumnField
+    .Position = 1
+    End With
+    
+    'Insert Data Field
+    With ActiveSheet.pivotTables("deptStanding").PivotFields("student_number")
+    .Orientation = xlDataField
+    .Function = xlCount
+    End With
+    
+    '/**** Part Level Standing Pivot *****/
+    
+    'Define Pivot Cache
+    Set PCache2 = ActiveWorkbook.PivotCaches.Create _
+    (SourceType:=xlDatabase, SourceData:=PRange). _
+    CreatePivotTable(TableDestination:=PSheet.Cells(27, 18), _
+    TableName:="plStanding")
+     
+    'Insert Blank Pivot Table
+    Set PTable2 = PCache2.CreatePivotTable _
+    (TableDestination:=PSheet.Cells(27, 18), TableName:="plStanding")
+    
+    'Insert Row Fields
+    With ActiveSheet.pivotTables("plStanding").PivotFields("Part Level")
+    .Orientation = xlRowField
+    .Position = 1
+    End With
+    
+    'Insert Column Fields
+    With ActiveSheet.pivotTables("plStanding").PivotFields("Standing")
+    .Orientation = xlColumnField
+    .Position = 1
+    End With
+    
+    'Insert Data Field
+    With ActiveSheet.pivotTables("plStanding").PivotFields("student_number")
+    .Orientation = xlDataField
+    .Function = xlCount
+    '.name = "Count of student_number"
+    End With
+    
+     '/**** Academic Year Standing Pivot *****/
+     
+    'Define Pivot Cache
+    Set PCache3 = ActiveWorkbook.PivotCaches.Create _
+    (SourceType:=xlDatabase, SourceData:=PRange). _
+    CreatePivotTable(TableDestination:=PSheet.Cells(35, 18), _
+    TableName:="academicYearStanding")
+     
+    'Insert Blank Pivot Table
+    Set PTable3 = PCache3.CreatePivotTable _
+    (TableDestination:=PSheet.Cells(35, 18), TableName:="academicYearStanding")
+    
+    'Insert Row Fields
+    With ActiveSheet.pivotTables("academicYearStanding").PivotFields("academic_level")
+    .Orientation = xlRowField
+    .Position = 1
+    End With
+    
+    'Insert Column Fields
+    With ActiveSheet.pivotTables("academicYearStanding").PivotFields("Standing")
+    .Orientation = xlColumnField
+    .Position = 1
+    End With
+    
+    'Insert Data Field
+    With ActiveSheet.pivotTables("academicYearStanding").PivotFields("student_number")
+    .Orientation = xlDataField
+    .Function = xlCount
+    End With
+    
+    '/**** approval Percent Pivot *****/
+     
+    'Define Pivot Cache
+    Set PCache4 = ActiveWorkbook.PivotCaches.Create _
+    (SourceType:=xlDatabase, SourceData:=PRange). _
+    CreatePivotTable(TableDestination:=PSheet.Cells(45, 18), _
+    TableName:="avgApproval")
+     
+    'Insert Blank Pivot Table
+    Set PTable4 = PCache4.CreatePivotTable _
+    (TableDestination:=PSheet.Cells(45, 18), TableName:="avgApproval")
+    
+    'Insert Row Fields
+    With ActiveSheet.pivotTables("avgApproval").PivotFields("academic_level")
+    .Orientation = xlRowField
+    .Position = 1
+    End With
+    
+    'Insert Data Field
+    With ActiveSheet.pivotTables("avgApproval").PivotFields("student_number")
+    .Orientation = xlDataField
+    .Function = xlCount
+    End With
+    
+    'Insert Data Field
+    With ActiveSheet.pivotTables("avgApproval").PivotFields("Approval Percent")
+    .Orientation = xlDataField
+    .Function = xlAverage
+    .NumberFormat = "0.0%"
+    End With
+    
+    '/**** Status Count Pivot *****/
+     
+    'Define Pivot Cache
+    Set PCache5 = ActiveWorkbook.PivotCaches.Create _
+    (SourceType:=xlDatabase, SourceData:=PRange). _
+    CreatePivotTable(TableDestination:=PSheet.Cells(56, 18), _
+    TableName:="statusCount")
+     
+    'Insert Blank Pivot Table
+    Set PTable5 = PCache5.CreatePivotTable _
+    (TableDestination:=PSheet.Cells(56, 18), TableName:="statusCount")
+    
+    'Insert Row Fields
+    With ActiveSheet.pivotTables("statusCount").PivotFields("Standing")
+    .Orientation = xlRowField
+    .Position = 1
+    End With
+    
+    'Insert Data Field
+    With ActiveSheet.pivotTables("statusCount").PivotFields("student_number")
+    .Orientation = xlDataField
+    .Function = xlCount
+    End With
+
+    '/******* Charts *******************/
+    
+    Set PShape1 = PSheet.Shapes.AddChart2(XlChartType:=XlChartType.xlColumnStacked, _
+                                        Left:=20, _
+                                        Top:=1400, _
+                                        Width:=1000, _
+                                        Height:=500)
+    
+    Set PChart1 = PShape1.Chart
+    PChart1.SetSourceData Source:=ActiveSheet.pivotTables("deptStanding").TableRange2
+    PChart1.ChartTitle.Text = "Standing per academic program"
+    
+    Set PShape2 = PSheet.Shapes.AddChart2(XlChartType:=XlChartType.xlColumnClustered, _
+                                        Left:=1100, _
+                                        Top:=1400, _
+                                        Width:=1000, _
+                                        Height:=500)
+    
+    Set PChart2 = PShape2.Chart
+    PChart2.SetSourceData Source:=ActiveSheet.pivotTables("plStanding").TableRange2
+    PChart2.ChartTitle.Text = "Standing per Part Level"
+    
+    Set PShape3 = PSheet.Shapes.AddChart2(XlChartType:=XlChartType.xlColumnClustered, _
+                                        Left:=20, _
+                                        Top:=2100, _
+                                        Width:=1000, _
+                                        Height:=500)
+    
+    Set PChart3 = PShape3.Chart
+    PChart3.SetSourceData Source:=ActiveSheet.pivotTables("academicYearStanding").TableRange2
+    PChart3.ChartTitle.Text = "Standing per academic year"
+    
+    Set PShape4 = PSheet.Shapes.AddChart2(XlChartType:=XlChartType.xlLineStacked, _
+                                        Left:=1100, _
+                                        Top:=2100, _
+                                        Width:=1000, _
+                                        Height:=500)
+    
+    Set PChart4 = PShape4.Chart
+    With PChart4
+    .SetSourceData Source:=ActiveSheet.pivotTables("avgApproval").TableRange2
+    .ChartTitle.Text = "Average Approval per academic year"
+        '
+          '   Add/define clustered column series for first set
+          '   of values.
+          '
+          .FullSeriesCollection(1).ChartType = xlLineStacked
+          .FullSeriesCollection(1).AxisGroup = 1
+        
+         '
+          '   Add/define line series for second set of values.
+          '
+          '   Because the first and second series have different
+          '   chart type, the chart becomes a combo chart.
+          '
+          .FullSeriesCollection(2).ChartType = xlColumnClustered
+          .FullSeriesCollection(2).AxisGroup = 1
+          .FullSeriesCollection(2).AxisGroup = 2
+     End With
+    
+    Set PShape5 = PSheet.Shapes.AddChart2(XlChartType:=XlChartType.xlPie, _
+                                        Left:=20, _
+                                        Top:=2700, _
+                                        Width:=300, _
+                                        Height:=300)
+    
+    Set PChart5 = PShape5.Chart
+    PChart5.SetSourceData Source:=ActiveSheet.pivotTables("statusCount").TableRange2
+    PChart5.ChartTitle.Text = "Students Status Count"
+    
+    'Set PShape6 = PSheet.Shapes.AddChart2(XlChartType:=XlChartType.xlPie, _
+                                        Left:=500, _
+                                        Top:=2700, _
+                                        Width:=300, _
+                                        Height:=300)
+    
+    'Set PChart6 = PShape6.Chart
+    'PChart6.SetSourceData Source:=ActiveSheet.pivotTables("plStanding").PivotFields("Standing").PivotItems("P").DataRange.Select
+    'PChart6.ChartTitle.Text = "Participants Standing"
+    
+    'Set PShape7 = PSheet.Shapes.AddChart2(XlChartType:=XlChartType.xlPie, _
+                                        Left:=900, _
+                                        Top:=2700, _
+                                        Width:=300, _
+                                        Height:=300)
+    
+    'Set PChart7 = PShape6.Chart
+    'PChart7.SetSourceData Source:=ActiveSheet.pivotTables("plStanding").PivotFields("Standing").PivotItems("S").DataRange.Select
+    'PChart7.ChartTitle.Text = "Scholars Standing"
+
+
+    MsgBox ("finished inserting pivot table")
+End Sub
+
+
+

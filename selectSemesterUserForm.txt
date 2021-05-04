@@ -1,0 +1,47 @@
+Option Explicit
+
+Public intYear As Long    ' <-- the variable that will hold your output
+Public semester As String    ' <-- the variable that will hold your output
+Public ok As Integer
+
+Public Function promptForSemester()
+    With semList
+        .AddItem "Spring"
+        .AddItem "Summer"
+        .AddItem "Fall"
+    End With
+    
+    semList.value = "Spring"
+    semester = "Spring"
+    
+    Dim i As Integer
+    Dim analysisYear As Integer
+    For i = 0 To 6
+        analysisYear = CInt(year(Now())) - i
+        With comboYear
+            .AddItem CStr(analysisYear)
+        End With
+    Next i
+    
+    comboYear.value = CStr(year(Now()))
+    intYear = CStr(year(Now()))
+    
+    Me.Show
+    
+    promptForSemester = "Analysis_" & semList.value & " " & intYear
+
+End Function
+
+Private Sub okBtn_Click()  ' OK button
+    ok = 1
+    Me.Hide
+End Sub
+
+Private Sub semList_Click()
+    semester = semList.value '<-- set the value corresponding to the selected option
+End Sub
+
+Private Sub comboYear_Click()
+    intYear = comboYear.value
+End Sub
+

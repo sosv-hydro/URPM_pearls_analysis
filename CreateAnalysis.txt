@@ -1,0 +1,1135 @@
+
+'/** Function to get the total honor points based on the number of credits and the grade
+'/** @param:
+'/**    grade: grade letter
+'/**    numcred: number of credits for the class
+
+Function getHonorPoints(grade As String, numcred As Integer) As Integer
+    Dim points As Integer
+    
+    Select Case grade
+         Case "A"
+             getHonorPoints = 4 * CInt(numcred)
+         Case "B"
+             getHonorPoints = 3 * numcred
+         Case "C"
+             getHonorPoints = 2 * numcred
+         Case "D"
+             getHonorPoints = 1 * numcred
+         Case "F"
+             getHonorPoints = 0
+         Case "P"
+             getHonorPoints = 0
+    End Select
+    
+End Function
+
+'/** Function to get the number of credits approved based on the grade earned and if the course is a department course
+'/** @param:
+'/**    grade: grade letter
+'/**    numcred: number of credits for the class
+'/**    deptCourse: if the course is identified as being as a department course
+
+Function getApprovedCredits(grade As String, numcred As Integer, deptCourse As Integer) As Integer
+    Dim creds As Integer
+    
+    If grade = "P" Then
+        creds = numcred
+    
+    ElseIf deptCourse = 1 And (grade <= "C") Then
+        creds = numcred
+        
+    ElseIf deptCourse = 0 And grade <= "D" Then
+        creds = numcred
+        
+    Else
+        creds = 0
+    
+    End If
+    
+    getApprovedCredits = creds
+End Function
+
+'/** Function to verify if a course has been withdrawn
+'/** @param:
+'/**    grade: grade letter
+'/**    numcred: number of credits for the class
+
+Function isWithdrawn(grade As String, numcred As Integer) As Integer
+    If grade = "W" Then
+        isWithdrawn = numcred
+    Else
+        isWithdrawn = 0
+    End If
+End Function
+
+'/** Function to verify if a course has been written off as Pass
+'/** @param:
+'/**    grade: grade letter
+'/**    numcred: number of credits for the class
+
+Function isPass(grade As String, numcred As Integer) As Integer
+    If grade = "P" Then
+        isPass = numcred
+    Else
+        isPass = 0
+    End If
+End Function
+
+'/** Function to calculate the total Honor points, approved credits, withdrawn credits, pass credits and total credits
+'/** Totals are calculated from the individual information of a student, that is, the tables drawn up for each
+'/** individual student from the grades excel spreadsheet. These tables are available in the worksheets of the department
+'/** the student belongs to.
+'/** @param:
+'/**    index: index where the student table information begins (for a particular student) in the worksheet
+'/**    totalItems: the total items (courses) in the table for the student. Indicated how many items have to be iterated
+'/**                through to calculate totals.
+'/**    totalStudentsDept: index of the department worksheet (where this student belongs to) summary table. This is the
+'/**                       index where the totals are going to be copied to to later copy into the general student summary worksheet.
+'/**    actWs: worksheet belonging to the specific department of this student. It is in this worksheet where the information
+'/**           calculated in this fucntion will be placed.
+
+Function calculateTotals(index As Integer, totalItems As Integer, totalStudentsDept As Integer, actWs As Worksheet)
+    Dim startIndex As Integer
+    Dim totalRowIndex As Integer
+    
+    Dim summaryIndex As Integer
+    summaryIndex = totalStudentsDept + 4
+    
+    Dim i As Integer
+    i = 0
+    
+    Dim totalCrd As Integer
+    Dim totalHP As Integer
+    Dim totalApprovCr As Integer
+    Dim totalWithdrawn As Integer
+    Dim totalPass As Integer
+    
+    startIndex = index + 3
+    totalRowIndex = startIndex + 10
+    
+    totalCrd = 0
+    totalHP = 0
+    totalApprovCr = 0
+    totalWithdrawn = 0
+    totalPass = 0
+    
+    ' Add credits, approved credits, honor points, credits withdrawn and credits passed from student table
+    While i < totalItems
+        totalCrd = totalCrd + CInt(actWs.Cells(startIndex, 3))
+        totalHP = totalHP + CInt(actWs.Cells(startIndex, 6))
+        totalApprovCr = totalApprovCr + CInt(actWs.Cells(startIndex, 7))
+        totalWithdrawn = totalWithdrawn + CInt(actWs.Cells(startIndex, 8))
+        totalPass = totalPass + CInt(actWs.Cells(startIndex, 9))
+        
+        i = i + 1
+        startIndex = startIndex + 1
+    Wend
+    
+    ' add totals to total row of student table
+    actWs.Cells(totalRowIndex, 1) = "Totals"
+    actWs.Cells(totalRowIndex, 3) = totalCrd
+    actWs.Cells(totalRowIndex, 6) = totalHP
+    actWs.Cells(totalRowIndex, 7) = totalApprovCr
+    actWs.Cells(totalRowIndex, 8) = totalWithdrawn
+    actWs.Cells(totalRowIndex, 9) = totalPass
+    
+    actWs.Range("A" & totalRowIndex & ":I" & totalRowIndex).Interior.ColorIndex = 40
+    
+    
+    '/** add term gpa and term approved percent to summary table
+    'term GPA
+    actWs.Cells(summaryIndex, 9) = Format(totalHP / (totalCrd - totalWithdrawn), "Standard")
+    
+    'Term Approved
+    actWs.Cells(summaryIndex, 10) = Format((totalApprovCr / totalCrd), "Percent")
+    
+End Function
+
+'/** Function to get the status of the student based on the grade, approval percent and the status from the past semester.
+'/** @param:
+'/**    studetnNum: student number of the student in question
+'/**    ws: previous semester Worksheet
+'/**    studentWs: department worksheet for the student in question
+'/**    studentSummaryRow: department summary table index where student info will be placed.
+'/**    Gpa: student gpa
+'/**    approval: student approval percent
+'/**    gRule: GPA rule that dictates standing
+'/**    aRule: Approval rule that dictates standing
+
+Function compareStatus(studentNum As String, _
+                        ws As Worksheet, _
+                        studentWs As Worksheet, _
+                        studentSummaryRow As Integer, _
+                        Gpa As Variant, _
+                        Approval As Variant, _
+                        gRule As Variant, _
+                        aRule As Variant) As String
+    
+    Dim prevStatus
+    Dim prevStatusType
+    
+    Dim status
+    Dim newStatus
+    
+    Dim count
+    
+    Dim progress As String
+    
+    Dim pastGpa As Variant
+    
+    Dim gpaRule
+    Dim approvalRule
+    Dim currentGpa
+    Dim currentApproval
+    
+    Dim index
+    
+    gpaRule = CDec(gRule)
+    approvalRule = CDec(aRule)
+    
+    currentGpa = CDec(Gpa)
+    currentApproval = CDec(Approval)
+    
+    Dim prevApproval As Variant
+    
+    'format student number as long
+    studentnum_f = CLng(studentNum)
+    
+    '/** Begin the comparisons
+    
+    ' end of row of previous worksheet for comparison
+    rowend = ws.Range("A1").End(xlDown).Row
+    
+    ' find index on previous semester worksheet related to student
+    index = Application.Match(studentnum_f, ws.Range("D1:D" & rowend), 0)
+    
+    ' the student might not appear in the worksheet, so status will be defaulted to G1X and
+    ' will use the current GPA and Approval rate for it
+    If (IsError(index)) Then
+        prevStatus = "G1X"
+        pastGpa = currentGpa
+        pastApproval = currentApproval
+    Else
+        prevStatus = ws.Range("N" & index)
+        pastGpa = CDbl(ws.Range("K" & index))
+        pastApproval = CDbl(ws.Range("M" & index))
+        
+        'fill in extra info from student, such as email, part level and gender
+        extraInfo = fillInExtraInfo(studentWs, ws, studentSummaryRow, CStr(index))
+    End If
+    
+    prevStatusType = Left(prevStatus, 1)
+    
+    ' if previous status = "Good" then compare current gpa and approval to the rule
+    If prevStatusType = "G" Then
+        ' if gpa and approval are higher than or equal to the rules, then increase good standing count
+        If currentGpa >= gpaRule And currentApproval >= approvalRule Then
+            count = CInt(Mid(prevStatus, 2, 1))
+            status = "G" & (count + 1) & "X"
+        
+        ' else set status to probation
+        Else
+            status = "P1X"
+        End If
+    
+    ' if previous status is probation then
+    ElseIf prevStatusType = "P" Then
+        
+        ' compare previous semester gpa and approval to the rule. If both are less to the rule, then
+        If pastGpa < gpaRule And pastApproval < approvalRule Then
+            
+            ' multiply current gpa with current approval and past gpa with past approval. If the result of the current gpa
+            ' and approval is higher than past, then progress is UP. Else, progress is DOWN
+            If (currentGpa * currentApproval) > (pastGpa * pastApproval) Then
+                progress = "U"
+            Else
+                progress = "D"
+            End If
+            
+        ' else if only previous semester's gpa is less than the rule, then
+        ElseIf pastGpa < gpaRule Then
+            
+            ' if current gpa is higher or equal than past gpa, progress is UP, else, progress is DOWN
+            If currentGpa >= pastGpa Then
+                progress = "U"
+            Else
+                progress = "D"
+            End If
+        
+        ' else if only previous semester's approval percent is less than the rule, then
+        ElseIf pastApproval < approvalRule Then
+            
+            ' if current approval is higher or equal than past approval, progress is UP, else, progress is DOWN
+            If currentApproval >= pastApproval Then
+                progress = "U"
+            Else
+                progress = "D"
+            End If
+        
+        ' else progress is X meaning there is not enough information to make a comparison
+        Else
+            progress = "X"
+        End If
+        
+        ' add to the probation count
+        count = Mid(prevStatus, 2, 1)
+        status = "P" & (count + 1) & progress
+    
+    ' if not probation or good standing, then status is AUDIT
+    Else
+        status = "AUD"
+        
+    End If
+    
+    ' print to console for debugging
+    Debug.Print ("student Number: " & studentnum_f & " prevStatus: " & prevStatus & " pastGpa: " & pastGpa & " pastApproval: " & pastApproval _
+            & " currentGPA: " & currentGpa & " currentApproval: " & currentApproval & " status: " & status)
+    
+    compareStatus = status
+    
+End Function
+
+'/** Function to fill in student extra information from previous summary worksheets
+'/** @param:
+'/**    ws: student worksheet where the info is going to be placed
+'/**    prevWs: worksheet of previous semester
+'/**    studentSummaryRow: index of sumamry table for the worksheet of the students department
+'/**    index: index of previous semester worksheet where student information resides
+
+Function fillInExtraInfo(ws As Worksheet, prevWs As Worksheet, studentSummaryRow As Integer, index)
+    
+    ws.Cells(studentSummaryRow, 3) = prevWs.Range("C" & index)
+    ws.Cells(studentSummaryRow, 7) = prevWs.Range("G" & index)
+    ws.Cells(studentSummaryRow, 8) = prevWs.Range("H" & index)
+
+End Function
+
+'/** Function to get the previous semester based on current date
+'/** @param:
+'/**    currDate: date of the day this function is runned
+'/**    prev: boolean indicates if we are trying to get the previous semester or the current semester. True if
+'/**              we are looking for the previous semester, false if we are looking for the current semester.
+
+Function getAnalysisSemester(currDate As String, prev As Boolean) As String
+    
+    Dim nowmonth
+    Dim analysisYear
+    Dim semester
+    Dim prevSemester
+    
+    Dim dsDate
+    dsDate = currDate
+    
+    nowmonth = month(dsDate)
+    nowyear = year(dsDate)
+    
+    ' if current month is < 5, then semester is Spring and previous semester is fall
+    If nowmonth <= 5 Then
+        semester = "Spring"
+        prevSemester = "Fall"
+        analysisYear = nowyear - 1
+        
+    ' else if current month is between 5 and 7, then semester is Summer and previous semester is Spring
+    ElseIf (nowmonth > 5 And nowmonth <= 7) Then
+        semester = "Summer"
+        prevSemester = "Spring"
+        analysisYear = nowyear
+    
+    ' else semester is Fall and previous semester is Summer
+    Else
+        semester = "Fall"
+        prevSemester = "Summer"
+        analysisYear = nowyear
+    End If
+    
+    If prev = True Then
+        getAnalysisSemester = "Analysis_" & prevSemester & " " & analysisYear
+    Else
+        getAnalysisSemester = "Analysis_" & semester & " " & nowyear
+    End If
+    
+End Function
+
+'/** Function to get the previous semester based on user chosen semester
+'/** @param:
+'/**    semester: selected semester to create the analysis
+
+Function getAnalysisSemester2(semester As String) As String
+    
+    Dim prevSemester
+    Dim year
+    Dim month
+    
+    year = Right(semester, 4)
+    
+    If InStr(semester, "Spring") <> 0 Then
+        prevSemester = "Fall"
+        year = CInt(year) - 1
+    ElseIf InStr(semester, "Summer") <> 0 Then
+        prevSemester = "Spring"
+    ElseIf InStr(semester, "Fall") <> 0 Then
+       prevSemester = "Summer"
+    End If
+
+    getAnalysisSemester2 = "Analysis_" & prevSemester & " " & year
+    
+End Function
+
+'/** Function to get the student year based on student number and current month/time where this function is ran
+'/** @param:
+'/**    studentNum: student number
+'/**    month: current month when this function is ran
+
+Function getStudentYear(studentNum As String, month As Integer) As String
+    Dim studentYear
+    
+    ' year when student began is in student number
+    studentYear = Mid(studentNum, 4, 2)
+    Dim semester
+    Dim suffix
+    
+    ' assuming every student start year is upwards from 2000
+    studentYear = "20" & studentYear
+    
+    ' if current month is less than month 7 (july) then its the first part of the the year
+    If month <= 7 Then
+        studentYear = CInt(year(Now())) - CInt(studentYear)
+        semester = "year1"
+        
+    ' else its the second half of the year
+    Else
+       studentYear = CInt(year(Now())) - CInt(studentYear) + 1
+       semester = "year2"
+    End If
+    
+    Select Case studentYear
+        Case 1
+            suffix = "st"
+        Case 2
+            suffix = "nd"
+        Case 3
+            suffix = "rd"
+        Case Else
+            suffix = "th"
+    End Select
+    
+    getStudentYear = studentYear & suffix & " " & semester
+    
+End Function
+
+'/** Function to get only the numbers of a string
+'/** @param:
+'/**    str: string from which to extract numbers
+
+Function GetNumbers(str As String, Occur As Long) As Long
+    Dim regex As Object: Set regex = CreateObject("vbscript.RegExp")
+    regex.Pattern = "(\d+)"
+    regex.Global = True
+    Set matches = regex.Execute(str)
+    GetNumbers = matches(Occur)
+End Function
+
+'/** Function to check if a worksheet exists
+'/** @param:
+'/**    WorksheetName: name of the worksheet to verify
+'/**    wb: workbook in which to verify worksheet
+
+Function WorksheetExists2(WorksheetName As String, Optional wb As Workbook) As Boolean
+    If wb Is Nothing Then Set wb = ThisWorkbook
+    With wb
+        On Error Resume Next
+        WorksheetExists2 = (.Sheets(WorksheetName).name = WorksheetName)
+        On Error GoTo 0
+    End With
+End Function
+
+'/** Subroutine to create a student analysis for a specified semester, provided a student grades worksheet
+Sub OpenFile_Click()
+    
+    Dim thiswbk As Workbook
+    Dim thiswbkname As String
+    
+    Dim thisws As Worksheet
+    Dim summaryws As Worksheet
+    
+    Dim homeWs As Worksheet
+    
+    Dim gradeswbk As Workbook
+    Dim gradesws As Worksheet
+    
+    Dim gradCreditsWs As Worksheet
+    
+    Dim FldrPicker As FileDialog
+    
+    Dim rowend As String
+    Dim columnend As String
+    
+    Dim studentIndex As Integer
+    Dim rowsIndex As Integer
+    Dim columnIndex As Integer
+    
+    Set thiswbk = Application.ThisWorkbook
+    Set thisws = Application.ActiveSheet
+    
+    ' open dialog to pick file that contains student grades
+    Set FldrPicker = Application.FileDialog(msoFileDialogOpen)
+    With FldrPicker
+        .Title = "Select Folder......."
+        .AllowMultiSelect = False
+        If .Show <> -1 Then GoTo CleanExit ' In case user clicks on Cancel
+            spath = .SelectedItems(1)
+        End With
+          
+                
+CleanExit:
+    spath = spath
+    If spath = "" Then
+        MsgBox "No folder location selected. Processing cancelled!!!!"
+        Exit Sub
+    End If
+
+
+OpenAndSelectCells:
+        
+        ' get password from password field on the initial worksheet were the file dialog is located
+        gradesWbkPassword = thisws.Range("D12")
+        
+        ' open selected greades worksheet
+        Set gradeswbk = Workbooks.Open(Filename:=spath, ReadOnly:=False, Password:=gradesWbkPassword)
+       
+        Set gradesws = gradeswbk.Worksheets(1)
+        
+        ' verify if worksheet with name GradCredits exists on selected workbook
+        ' this worksheet contains graduation credits and AP credits of the students
+        If WorksheetExists2("GradCredits", gradeswbk) = False Then
+            MsgBox "Workbook does not contain GradCredits worksheet. Processing cancelled."
+            Exit Sub
+        End If
+        
+        Set gradCreditsWs = gradeswbk.Worksheets("GradCredits")
+        
+        ' get row where grades worksheet information ends
+        Dim gradCreditsWsRowEnd
+        gradCreditsWsRowEnd = gradCreditsWs.Range("A2").End(xlDown).Row
+        
+        rowend = gradesws.Range("A1").End(xlDown).Row
+        columnend = gradesws.Range("A1").End(xlToRight).Column
+        
+        Dim ininws As Worksheet
+        Dim inmews As Worksheet
+        Dim icomws As Worksheet
+        Dim ciicws As Worksheet
+        Dim inquws As Worksheet
+        Dim insows As Worksheet
+        Dim inelws As Worksheet
+        Dim inciws As Worksheet
+        Dim agtows As Worksheet
+        Dim naws As Worksheet
+        
+        ' setting up references for the department worksheets
+        Set ininws = thiswbk.Worksheets("TestININ")
+        Set inmews = thiswbk.Worksheets("TestINME")
+        Set icomws = thiswbk.Worksheets("TestICOM")
+        Set ciicws = thiswbk.Worksheets("TestCIIC")
+        Set inquws = thiswbk.Worksheets("TestINQU")
+        Set insows = thiswbk.Worksheets("TestINSO")
+        Set inelws = thiswbk.Worksheets("TestINEL")
+        Set naws = thiswbk.Worksheets("TestNA")
+        Set gradws = thiswbk.Worksheets("TestGRAD")
+        Set inciws = thiswbk.Worksheets("TestINCI")
+        Set agtows = thiswbk.Worksheets("TestAGTO")
+        
+        ' dictionary to hold the quantity of students in each department
+        Dim deptStudents As Object
+        Set deptStudents = CreateObject("Scripting.Dictionary")
+        
+        deptStudents.Add "Computer Engineering", 0
+        deptStudents.Add "Civil Engineering", 0
+        deptStudents.Add "Chemical Engineering", 0
+        deptStudents.Add "Software Engineering", 0
+        deptStudents.Add "Mechanical Engineering", 0
+        deptStudents.Add "Industrial Engineering", 0
+        deptStudents.Add "Electrical Engineering", 0
+        deptStudents.Add "NA", 0
+        deptStudents.Add "Grad", 0
+        deptStudents.Add "Computer Science", 0
+        deptStudents.Add "Surveying & Topography", 0
+        
+        ' Dictionary to hold index of worksheet according to students and their respective departments
+        Dim deptIndex As Object
+        Set deptIndex = CreateObject("Scripting.Dictionary")
+        
+        deptIndex.Add "Computer Engineering", 24
+        deptIndex.Add "Civil Engineering", 24
+        deptIndex.Add "Chemical Engineering", 24
+        deptIndex.Add "Software Engineering", 24
+        deptIndex.Add "Mechanical Engineering", 24
+        deptIndex.Add "Industrial Engineering", 24
+        deptIndex.Add "Electrical Engineering", 24
+        deptIndex.Add "Computer Science", 24
+        deptIndex.Add "NA", 24
+        deptIndex.Add "Grad", 24
+        deptIndex.Add "Surveying & Topography", 24
+        
+        ' set active worksheet for copying student information
+        Dim actWs As Worksheet
+        
+        ' specify whether this is a new summary analysis
+        Dim newSummary As Boolean
+        newSummary = False
+        
+        Dim analysisSemester As String
+        
+        Dim semester As String
+        Dim semYear As String
+        
+        ' get semester to create analysis for based on user input
+        semester = Sheet1.semesterListBox
+        semYear = Sheet1.yearComboBox
+        
+        analysisSemester = "Analysis_" & semester & " " & semYear
+       
+        ' verify if tab for semester already exists. If it does, delete and create a new tab for the new analysis
+        If WorksheetExists2(analysisSemester, thiswbk) = True Then
+            thiswbk.Worksheets(analysisSemester).Delete
+        End If
+        
+        ' create a new analysis worksheet
+        thiswbk.Worksheets.Add.name = analysisSemester
+        newSummary = True
+        
+        Dim x As Variant
+        
+        ' clear contents of department worksheets
+        For Each x In deptStudents.Keys
+        
+            Select Case x
+                 Case "Computer Engineering"
+                     icomws.Range("A5:O450").ClearContents
+                     
+                 Case "Civil Engineering"
+                     inciws.Range("A5:O450").ClearContents
+                     
+                 Case "Chemical Engineering"
+                     inquws.Range("A5:O450").ClearContents
+                     
+                 Case "Software Engineering"
+                     insows.Range("A5:O450").ClearContents
+                     
+                 Case "Mechanical Engineering"
+                     inmews.Range("A5:O450").ClearContents
+                     
+                 Case "Industrial Engineering"
+                     ininws.Range("A5:O450").ClearContents
+                     
+                 Case "Electrical Engineering"
+                     inelws.Range("A5:O450").ClearContents
+                     
+                 Case "Computer Science"
+                     ciicws.Range("A5:O450").ClearContents
+                     
+                 Case "Surveying & Topography"
+                     Set actWs = agtows
+                     agtows.Range("A5:O450").ClearContents
+                     
+                 Case "NA"
+                    naws.Range("A5:O450").ClearContents
+                    
+                Case Else
+                    gradws.Range("A5:O450").ClearContents
+                
+            End Select
+        Next x
+        
+        Set summaryws = thiswbk.Worksheets(analysisSemester)
+        
+        ' Creating a dictionary to keep track of students
+        Dim studentsDict As Object
+        Set studentsDict = CreateObject("Scripting.Dictionary")
+        
+        Dim prevnumEst As String
+        Dim numEst As String
+        
+        Dim studentYear As String
+        
+        prevnumEst = "0"
+        numEst = "1"
+        
+        Dim prevDept
+        Dim department
+        
+        Dim nota As String
+        Dim crd As Integer
+        
+        Dim prevGpaAccum
+        Dim prevApproval
+        
+        Dim apCrd
+        
+        Dim gpaRule As String
+        Dim approvalRule As String
+        
+        Dim prevAnalysisSemester As String
+        Dim prevAnalysisSemesterWs As Worksheet
+        
+        ' get previous semester for analysis
+        prevAnalysisSemester = getAnalysisSemester2(analysisSemester)
+        
+        Dim answer As Integer
+        
+        '/** get previous semester analysis worksheet or make user select it
+        
+        ' if previous analysis semester exists, then set the reference for it
+        If WorksheetExists2(prevAnalysisSemester, thiswbk) = True Then
+             Set prevAnalysisSemesterWs = thiswbk.Worksheets(prevAnalysisSemester)
+        
+        ' else if previous analysis semester does not exists, then make the user decide if proceeding
+        Else
+            answer = MsgBox("There is no previous semester analysis worksheet from which to compare and get student status from. Do you wish do continue?", _
+                    vbQuestion + vbYesNo + vbDefaultButton2, "Message Box Title")
+            
+            ' if answer is yes, then prompt user to select the semester to compare status from
+            If answer = vbYes Then
+                
+                prevAnalysisSemester = UserForm1.promptForSemester()
+                
+                ' if user selected semester does not exists, then just use the current worksheet to avoid errors
+                If WorksheetExists2(prevAnalysisSemester, thiswbk) = False Then
+                    MsgBox ("The worksheet for " & prevAnalysisSemester & " does not exist. Student's status will not be able to be compared with a previous semester.")
+                    
+                    ' No previous semester on workbook, so just choose one to avoid errors later on
+                    Set prevAnalysisSemesterWs = thisws
+                
+                ' else if it exists, use the selected worksheet for comparison of status.
+                Else
+                    Set prevAnalysisSemesterWs = thiswbk.Worksheets(prevAnalysisSemester)
+                End If
+            
+            ' else exit subroutine if chosen not to continue
+            Else
+              Exit Sub
+              
+            End If
+            
+        End If
+        
+        Dim status As String
+        Dim studentSummaryRow As Integer
+        
+        ' counter of how many student classes where inserted into a worksheet
+        Dim sItemCounter As Integer
+        sItemCounter = 0
+        
+        ' index for each worksheet
+        Dim wsIndex As Integer
+        
+        Dim oldWsIndex As Integer
+        
+        Dim i As Integer
+        i = 2
+        
+        ' loop through the whole grades worksheet
+        While i < rowend
+           
+           '/** Get student information: last name, first name, student number, department, gpa, etc.
+           
+           numEst = gradesws.Cells(i, 2)
+           
+           department = gradesws.Cells(i, 3)
+           
+           If (IsError(department)) Then
+                department = "NA"
+           ElseIf InStr(department, "Grad") > 0 Then
+                department = "Grad"
+           End If
+           
+           FName = gradesws.Cells(i, 4)
+           LName = gradesws.Cells(i, 5)
+           curso = gradesws.Cells(i, 6)
+           descCurso = gradesws.Cells(i, 7)
+           crd = GetNumbers(gradesws.Cells(i, 8), 0)
+           
+           nota = gradesws.Cells(i, 9)
+           'trim extra whitespace
+           nota = Application.WorksheetFunction.Trim(nota)
+           
+           gpaAccum = gradesws.Cells(i, 10)
+           
+           '/** if previous student number is not equal to the current student number, then we have finished with the previous
+           '/** student information and have moved on to a new one, so finish writing information of the previous student.
+           
+           If prevnumEst <> numEst Then
+                
+                '/** if it is not the first iteration, then (this assumes there was already a student whose information has been recorded)
+                If i <> 2 Then
+                
+                    gpaRule = actWs.Range("W15")
+                    approvalRule = actWs.Range("X15")
+                
+                    ' approval should appear automatically on the worksheet columns based on
+                    ' graduation credits + ap credits and the current year of the student
+                    ' the column is formatted to have a formula that takes these values into consideration
+                    ' to calculate the approval rate
+                    
+                    gradcr = actWs.Cells(studentSummaryRow, 12)
+                    apcr = actWs.Cells(studentSummaryRow, 15)
+                    studentYear = actWs.Cells(studentSummaryRow, 5)
+                    supposedCr = Application.VLookup(studentYear, actWs.Range("R5:U14"), 4, False)
+                    
+                    ' calculate approval
+                    If (IsError(supposedCr)) Then
+                        prevApproval = 0
+                    Else
+                        prevApproval = (apcr + gradcr) / supposedCr
+                    End If
+                    
+                    
+                    oldWsIndex = deptIndex(prevDept)
+                
+                    totals = calculateTotals(oldWsIndex, sItemCounter, deptStudents(prevDept), actWs)
+                    
+                    ' get status by comparing previous semester with current semester's gpa and approval
+                    status = compareStatus(prevnumEst, prevAnalysisSemesterWs, actWs, studentSummaryRow, prevGpaAccum, prevApproval, gpaRule, approvalRule)
+                    
+                    actWs.Cells(studentSummaryRow, 14) = status
+                    
+                    sItemCounter = 0
+                    
+                    ' set index for next student
+                    deptIndex(prevDept) = oldWsIndex + 15
+                    
+                End If
+                
+                wsIndex = deptIndex(department)
+                
+                prevDept = department
+                
+                prevnumEst = numEst
+                
+                prevGpaAccum = gpaAccum
+                
+                ' get index of cell in worksheet related to student entry
+                gradCrdIndex = Application.Match(CLng(numEst), gradCreditsWs.Range("C1:C" & gradCreditsWsRowEnd), 0)
+                
+                If (IsError(gradCrdIndex)) Then
+                    gradCrd = 0
+                    apCrd = 0
+                Else
+                    ' get credits of the students using the previously recovered index
+                    gradCrd = gradCreditsWs.Range("D" & gradCrdIndex)
+                    apCrd = gradCreditsWs.Range("E" & gradCrdIndex)
+                End If
+                
+                ' Set department worksheet for current student as active worksheet
+                Select Case department
+                     Case "Computer Engineering"
+                         Set actWs = icomws
+                         deptStudents("Computer Engineering") = deptStudents("Computer Engineering") + 1
+                         
+                     Case "Civil Engineering"
+                         Set actWs = inciws
+                         deptStudents("Civil Engineering") = deptStudents("Civil Engineering") + 1
+                         
+                     Case "Chemical Engineering"
+                         Set actWs = inquws
+                         deptStudents("Chemical Engineering") = deptStudents("Chemical Engineering") + 1
+                         
+                     Case "Software Engineering"
+                         Set actWs = insows
+                         deptStudents("Software Engineering") = deptStudents("Software Engineering") + 1
+                         
+                     Case "Mechanical Engineering"
+                         Set actWs = inmews
+                         deptStudents("Mechanical Engineering") = deptStudents("Mechanical Engineering") + 1
+                        
+                     Case "Industrial Engineering"
+                         Set actWs = ininws
+                         deptStudents("Industrial Engineering") = deptStudents("Industrial Engineering") + 1
+                         
+                     Case "Electrical Engineering"
+                         Set actWs = inelws
+                         deptStudents("Electrical Engineering") = deptStudents("Electrical Engineering") + 1
+                         
+                     Case "Computer Science"
+                         Set actWs = ciicws
+                         deptStudents("Computer Science") = deptStudents("Computer Science") + 1
+                         
+                     Case "Surveying & Topography"
+                         Set actWs = agtows
+                         deptStudents("Surveying & Topography") = deptStudents("Surveying & Topography") + 1
+                       
+                     Case "NA"
+                        Set actWs = naws
+                        deptStudents("NA") = deptStudents("NA") + 1
+                        
+                     Case Else
+                        Set actWs = gradws
+                        deptStudents("Grad") = deptStudents("Grad") + 1
+                End Select
+                
+                studentSummaryRow = deptStudents(department) + 4
+                
+                ' set information on department worksheet summary table
+                actWs.Cells(studentSummaryRow, 1) = FName
+                actWs.Cells(studentSummaryRow, 2) = LName
+                actWs.Cells(studentSummaryRow, 4) = numEst
+                actWs.Cells(studentSummaryRow, 5) = getStudentYear(numEst, month(Now()))
+                actWs.Cells(studentSummaryRow, 6) = department
+                actWs.Cells(studentSummaryRow, 11) = gpaAccum
+                actWs.Cells(studentSummaryRow, 12) = gradCrd
+                actWs.Cells(studentSummaryRow, 15) = apCrd
+                
+                actWs.Cells(wsIndex, 1) = "Full Name"
+                actWs.Cells(wsIndex, 2) = FName & " " & LName
+                
+                actWs.Cells(wsIndex + 1, 1) = "Student ID"
+                actWs.Cells(wsIndex + 1, 2) = numEst
+                
+                actWs.Range("A" & wsIndex & ":A" & wsIndex + 1).Interior.ColorIndex = 37
+                
+                ' set headers for student table on department worksheet
+                actWs.Cells(wsIndex + 2, 1) = "Course Code"
+                actWs.Cells(wsIndex + 2, 2) = "Course Name"
+                actWs.Cells(wsIndex + 2, 3) = "Credits"
+                actWs.Cells(wsIndex + 2, 4) = "Letter Grade"
+                actWs.Cells(wsIndex + 2, 5) = "Dept.Course"
+                actWs.Cells(wsIndex + 2, 6) = "Honor Points"
+                actWs.Cells(wsIndex + 2, 7) = "Apprv. Cr."
+                actWs.Cells(wsIndex + 2, 8) = "Withdrawn"
+                actWs.Cells(wsIndex + 2, 9) = "Pass"
+                
+                actWs.Range("A" & wsIndex + 2 & ":I" & wsIndex + 2).Interior.ColorIndex = 37
+                
+                ' Index + 3 because there is a row of headers besides the name and student number
+                wsIndex = wsIndex + 3
+                
+            End If
+            
+            'Course code
+            actWs.Cells(wsIndex, 1) = curso
+            
+            'course description
+            actWs.Cells(wsIndex, 2) = descCurso
+            
+            'credits
+            actWs.Cells(wsIndex, 3) = crd
+            
+            ' grade
+            actWs.Cells(wsIndex, 4) = nota
+            
+            'dept course
+            actWs.Cells(wsIndex, 5) = 0
+            
+            ' get honor points
+            actWs.Cells(wsIndex, 6) = getHonorPoints(nota, crd)
+            
+            ' get total approved credits
+            actWs.Cells(wsIndex, 7) = getApprovedCredits(nota, crd, 0)
+            
+            ' get withdrawn credits
+            actWs.Cells(wsIndex, 8) = isWithdrawn(nota, crd)
+            
+            ' get pass credits
+            actWs.Cells(wsIndex, 9) = isPass(nota, crd)
+            
+            i = i + 1
+            wsIndex = wsIndex + 1
+            sItemCounter = sItemCounter + 1
+           
+        Wend
+        
+        '/** set info for last student on grades worksheet
+        
+        gpaRule = actWs.Range("W15")
+        approvalRule = actWs.Range("X15")
+    
+        ' approval should appear automatically on the worksheet columns based on
+        ' graduation credits + ap credits and the current year of the student
+        ' the column is formatted to have a formula that takes these values into consideration
+        ' to calculate the approval rate
+        prevApproval = actWs.Cells(studentSummaryRow, 13)
+        
+        If (prevApproval = "") Then
+            prevApproval = 0
+        End If
+        
+        oldWsIndex = deptIndex(prevDept)
+    
+        totals = calculateTotals(oldWsIndex, sItemCounter, deptStudents(prevDept), actWs)
+      
+        status = compareStatus(prevnumEst, prevAnalysisSemesterWs, actWs, studentSummaryRow, prevGpaAccum, prevApproval, gpaRule, approvalRule)
+        
+        actWs.Cells(studentSummaryRow, 14) = status
+        
+        sItemCounter = 0
+        
+        deptIndex(prevDept) = oldWsIndex + 15
+        
+        
+        '/** transferring all students to Analysis summary page
+        
+        i = 0
+        
+        Dim j As Variant
+        Dim counter As Integer
+        
+        Dim totalStudentsCounter As Integer
+        totalStudentsCounter = 1
+        
+        Dim rgSource As Range
+        Dim rgDest As Variant
+        
+        Dim Ftable As ListObject
+        
+        '/** loop through each department worksheet, setting the active worksheet and counter for total students in each worksheet
+        For Each j In deptStudents.Keys
+        
+            Select Case j
+                 Case "Computer Engineering"
+                     Set actWs = icomws
+                     counter = deptStudents(j)
+                     
+                 Case "Civil Engineering"
+                     Set actWs = inciws
+                     counter = deptStudents(j)
+                     
+                 Case "Chemical Engineering"
+                     Set actWs = inquws
+                     counter = deptStudents(j)
+                     
+                 Case "Software Engineering"
+                     Set actWs = insows
+                     counter = deptStudents(j)
+                     
+                 Case "Mechanical Engineering"
+                     Set actWs = inmews
+                     counter = deptStudents(j)
+                     
+                 Case "Industrial Engineering"
+                     Set actWs = ininws
+                     counter = deptStudents(j)
+                     
+                 Case "Electrical Engineering"
+                     Set actWs = inelws
+                     counter = deptStudents(j)
+                     
+                 Case "Computer Science"
+                     Set actWs = ciicws
+                     counter = deptStudents(j)
+                     
+                 Case "Surveying & Topography"
+                     Set actWs = agtows
+                     counter = deptStudents(j)
+                     
+                 Case "NA"
+                    Set actWs = naws
+                    counter = deptStudents(j)
+                    
+                Case Else
+                    Set actWs = gradws
+                    counter = deptStudents(j)
+                     
+            End Select
+            
+            ' if more than one student has been recorded, then
+            If (counter > 0) Then
+                ' get table object from worksheet
+                Set Ftable = actWs.ListObjects(1)
+                index = totalStudentsCounter + counter
+                
+                ' establish formula for approval percent
+                Ftable.ListColumns("Approval Percent").DataBodyRange.Formula = "=IFERROR(([@[AP Cr]]+[@[Graduation Credits]])/VLOOKUP([@[academic_level]],$R$5:$U$14,4,FALSE),"""")"
+                
+                ' copy information from department sumamry table to the general anaylis worksheet
+                actWs.Range("A5:O" & (counter + 4)).Copy
+                summaryws.Range("A" & (totalStudentsCounter + 1) & ":O" & index).PasteSpecial Paste:=xlPasteValues
+                
+                totalStudentsCounter = index
+            End If
+            
+        Next j
+        
+        ' if its a new summary worksheet, then
+        If (newSummary) Then
+            
+            ' set the headers
+            summaryws.Cells(1, 1) = "first_name"
+            summaryws.Cells(1, 2) = "last_name"
+            summaryws.Cells(1, 3) = "gender"
+            summaryws.Cells(1, 4) = "student_number"
+            summaryws.Cells(1, 5) = "academic_level"
+            summaryws.Cells(1, 6) = "study_program"
+            summaryws.Cells(1, 7) = "Part Level"
+            summaryws.Cells(1, 8) = "email_address"
+            summaryws.Cells(1, 9) = "Term GPA"
+            summaryws.Cells(1, 10) = "Term Approved %"
+            summaryws.Cells(1, 11) = "General GPA"
+            summaryws.Cells(1, 12) = "Graduation Credits"
+            summaryws.Cells(1, 13) = "Approval Percent"
+            summaryws.Cells(1, 14) = "Status"
+            summaryws.Cells(1, 15) = "AP credits"
+            summaryws.Cells(1, 16) = "Standing"
+            
+            summaryws.Cells(3, 18) = gpaRule
+            summaryws.Cells(3, 19) = approvalRule
+            
+            ' create a new table for the information range
+            Dim objTable As ListObject
+            Set objTable = summaryws.ListObjects.Add(xlSrcRange, summaryws.Range("A1:P" & index), , xlYes)
+            
+            ' set formula for Standing column
+            objTable.ListColumns("Standing").DataBodyRange.Formula = "=IF( OR(RIGHT([@Status], 1)=""U"", AND(LEFT( [@Status],1)=""P"", RIGHT( [@Status],1)=""X"")),  ""Probation"", IF(OR(AND([@Status]>""G1X"", [@Status]>=""P2D""),[@Status]=""AUD""),""Audit"", ""Good""))"
+            
+        End If
+        
+        Dim gpaRng As Range, approveRng As Range, statusRng As Range
+            Dim GoodCondition As FormatCondition, ProbCondition As FormatCondition, GPACondition As FormatCondition, ApprovalCondition As FormatCondition
+            
+            ' set range for approval, status and gpa columns
+            Set gpaRng = summaryws.Range("K2:K" & index)
+            Set approveRng = summaryws.Range("M2:M" & index)
+            Set statusRng = summaryws.Range("P2:P" & index)
+            
+            ' setting conditions for conditional formatting
+            Set GoodCondition = statusRng.FormatConditions.Add(xlCellValue, xlEqual, "Good")
+            Set ProbCondition = statusRng.FormatConditions.Add(xlCellValue, xlEqual, "Probation")
+            Set AuditCondition = statusRng.FormatConditions.Add(xlCellValue, xlEqual, "Audit")
+            Set GPACondition = gpaRng.FormatConditions.Add(xlCellValue, xlLess, "=" & gpaRule & "")
+            Set ApprovalCondition = approveRng.FormatConditions.Add(xlCellValue, xlLess, "=" & approvalRule & "")
+            
+            With GoodCondition
+             .Interior.Color = RGB(144, 238, 144)
+             .Font.Bold = True
+            End With
+    
+            With ProbCondition
+              .Interior.Color = RGB(255, 164, 147)
+               .Font.Bold = True
+            End With
+            
+             With AuditCondition
+              .Interior.Color = RGB(255, 99, 71)
+               .Font.Bold = True
+            End With
+            
+            With GPACondition
+              .Interior.Color = RGB(255, 164, 147)
+            End With
+            
+            With ApprovalCondition
+              .Interior.Color = RGB(255, 164, 147)
+            End With
+        
+        ' set numeric formats for selected ranges
+        summaryws.Range("I2:I" & index).NumberFormat = "0.00"
+        summaryws.Range("K2:K" & index).NumberFormat = "0.00"
+        
+        summaryws.Range("J2:J" & index).NumberFormat = "0.00%"
+        summaryws.Range("M2:M" & index).NumberFormat = "0.0%"
+        
+        ' insert pivot tables
+        Call InsertPivotTable(summaryws)
+        
+        MsgBox ("Analysis Finished!")
+End Sub
